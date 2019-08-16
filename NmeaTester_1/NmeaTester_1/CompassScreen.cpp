@@ -12,8 +12,13 @@ CompassScreen::CompassScreen(LiquidCrystal_I2C* lcdPtr) {
   
 }
 
+void CompassScreen::ProcessChar(char newChar) {
+  
+}
+
 void CompassScreen::TitlePrint() {
   LiquidCrystal_I2C lcd = *_lcdPtr;
+  lcd.clear();
   lcd.setCursor(0,0);
   lcd.print(F("Compass"));
 }
@@ -22,8 +27,7 @@ void CompassScreen::UpdatePrint() {
   if (!_hasUpdate) return;
   
   LiquidCrystal_I2C lcd = *_lcdPtr;
-  char buffer[5];
-  memcpy(buffer, 0, sizeof buffer);
+  char buffer[5]; memcpy(buffer, 0, sizeof buffer); // Init the buffer
   
   // Print magnetic bearing
   lcd.setCursor(2,0);
@@ -50,14 +54,15 @@ void CompassScreen::UpdatePrint() {
   lcd.setCursor(10,0);
   if (_hasBearingM && _hasBearingT && (_bearingM != _bearingT)) {
     // TODO calculate and print the difference
-    // TODO math is fucky.
-    // If you set it both to 0.1, it says deviation is -90.
-    // If you set it to 0.1 and 0.2, it shows a negative deviation (ABS should never let that happen).
-    float diff = Utils::ConstrainAngle(_bearingM - _bearingT);
-    dtostrf(abs(diff), 5, 1, buffer);
+    //dtostrf(abs(diff), 5, 1, buffer);
+    //memcpy(buffer, 0, sizeof buffer); // Clear the buffer. Do I need to do this?
+    dtostrf(abs(_diff), 5, 1, buffer); // Value, string width, decimal places, output buffer
     lcd.print(buffer);
-    if (diff > 0) lcd.print(COMPASS_DIFF_POSITIVE_CHAR);
-    else if (diff < 0) lcd.print(COMPASS_DIFF_NEGATIVE_CHAR);
+
+    // Print the trailing East / West char
+    if (_diff > 0) lcd.print(COMPASS_DIFF_POSITIVE_CHAR);
+    else if (_diff < 0) lcd.print(COMPASS_DIFF_NEGATIVE_CHAR);
+    else lcd.print(COMPASS_SPACE_CHAR);
   }
   else {
     lcd.print(COMPASS_EMPTY_NUMBER_CHAR);
@@ -70,8 +75,10 @@ void CompassScreen::Reset() {
   _hasUpdate = true;
   _hasBearingM = false;
   _hasBearingT = false;
+  _hasDiff = false;
   _bearingM = 0;
   _bearingT = 0;
+  _diff = 0;
 }
 
 void CompassScreen::InitialPrint() {
@@ -111,6 +118,7 @@ void CompassScreen::ProcessMessage(NmeaParser* parser) {
       _bearingT = newValue;
       _hasBearingT = true;
       _hasUpdate = true;
+      _CalculateDiff();
     }
     
     return;
@@ -128,8 +136,29 @@ void CompassScreen::ProcessMessage(NmeaParser* parser) {
       _bearingM = newValue;
       _hasBearingM = true;
       _hasUpdate = true;
+      _CalculateDiff();
     }
     
     return;
+  }
+}
+
+void CompassScreen::_CalculateDiff() {
+  if (!_hasBearingM || !_hasBearingT) {
+    _hasDiff = false;
+    _diff = 0;
+  }
+  else
+  {
+    // Calculate the difference between Magnetic and True
+    
+    // TODO math is fucky.
+    // If you set it both to 0.1, it says deviation is -90.
+    // If you set it to 0.1 and 0.2, it shows a negative deviation (ABS should never let that happen).
+    
+    _diff = Utils::ConstrainAngle(_bearingM - _bearingT);
+    #if DEBUG
+    Serial.print(F("DiffCalc: ")); Serial.println(_diff);
+    #endif
   }
 }

@@ -10,6 +10,7 @@ class MessageDumpScreen: public BaseScreen {
     virtual void InitialPrint();
     virtual void UpdatePrint();
     virtual void ProcessMessage(NmeaParser* parser);
+    void ProcessChar(char newChar);
     virtual void Reset();
     virtual void TitlePrint();
   private:

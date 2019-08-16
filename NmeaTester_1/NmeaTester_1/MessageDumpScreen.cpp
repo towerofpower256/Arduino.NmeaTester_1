@@ -12,8 +12,13 @@ MessageDumpScreen::MessageDumpScreen(LiquidCrystal_I2C* lcdPtr) {
   _hasUpdate = false;
 }
 
+void MessageDumpScreen::ProcessChar(char newChar) {
+  
+}
+
 void MessageDumpScreen::TitlePrint() {
   LiquidCrystal_I2C lcd = *this->_lcdPtr;
+  lcd.clear();
   lcd.setCursor(0,0);
   lcd.print(F("Message dump"));
 }

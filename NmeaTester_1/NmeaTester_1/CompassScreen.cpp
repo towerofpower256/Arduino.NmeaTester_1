@@ -23,8 +23,8 @@ void CompassScreen::TitlePrint() {
   lcd.print(F("Compass"));
 }
 
-void CompassScreen::UpdatePrint() {
-  if (!_hasUpdate) return;
+void CompassScreen::UpdatePrint(bool forcePrint) {
+  if (!forcePrint && !_hasUpdate) return;
   
   LiquidCrystal_I2C lcd = *_lcdPtr;
   char buffer[5]; memcpy(buffer, 0, sizeof buffer); // Init the buffer

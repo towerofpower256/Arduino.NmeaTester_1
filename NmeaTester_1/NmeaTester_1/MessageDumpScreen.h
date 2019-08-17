@@ -8,7 +8,7 @@ class MessageDumpScreen: public BaseScreen {
   public:
     MessageDumpScreen(LiquidCrystal_I2C* lcdPtr);
     virtual void InitialPrint();
-    virtual void UpdatePrint();
+    virtual void UpdatePrint(bool forcePrint);
     virtual void ProcessMessage(NmeaParser* parser);
     void ProcessChar(char newChar);
     virtual void Reset();

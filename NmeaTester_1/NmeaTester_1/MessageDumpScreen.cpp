@@ -23,8 +23,8 @@ void MessageDumpScreen::TitlePrint() {
   lcd.print(F("Message dump"));
 }
 
-void MessageDumpScreen::UpdatePrint() {
-  if (!_hasUpdate) return; // Don't do anything if there's nothing new;
+void MessageDumpScreen::UpdatePrint(bool forcePrint) {
+  if (!forcePrint && !_hasUpdate) return; // Don't do anything if there's nothing new;
   
   LiquidCrystal_I2C lcd = *this->_lcdPtr;
   lcd.clear();

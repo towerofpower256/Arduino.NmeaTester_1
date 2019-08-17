@@ -17,7 +17,7 @@ class CompassScreen: public BaseScreen {
   public:
     CompassScreen(LiquidCrystal_I2C* lcdPtr);
     void InitialPrint();
-    void UpdatePrint();
+    void UpdatePrint(bool forcePrint);
     void ProcessMessage(NmeaParser* parser);
     void ProcessChar(char newChar);
     void Reset();

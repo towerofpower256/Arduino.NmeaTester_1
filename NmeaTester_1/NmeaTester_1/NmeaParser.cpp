@@ -9,7 +9,8 @@
 const char NMEA_START_CHAR = '$';
 const char NMEA_DELIM_CHAR = ',';
 const char NMEA_PARITY_CHAR = '*';
-const char NMEA_END_CHAR = '\r';
+const char NMEA_LF = '\r';
+const char NMEA_NL = '\n';
 const char NMEA_NULL_CHAR = '\0';
 
 NmeaParser::NmeaParser() {
@@ -33,7 +34,7 @@ bool NmeaParser::doNext(char nextChar) {
     
     
     // Is this the end message char?
-    if (nextChar == NMEA_END_CHAR) {
+    if (nextChar == NMEA_LF || nextChar == NMEA_NL) {
       // This is the end char, message reading complete
       _readerState = NMEA_READER_STATE_WAITING_START;
       return true;
@@ -72,7 +73,7 @@ bool NmeaParser::canAddChar() {
 // Reset the reader to get ready to read another message
 void NmeaParser::reset() {
   // Clear the buffer
-  //memset(_buffer, NMEA_NULL_CHAR, NMEA_MSG_MAX_LENGTH); // Not sure if we need to clear the char array
+  memset(_buffer, NMEA_NULL_CHAR, NMEA_MSG_MAX_LENGTH); // Not sure if we need to clear the char array
   
   _charCount = 0;
 }
@@ -91,7 +92,7 @@ String NmeaParser::getTerm(int targetTermIndex) {
     char ic = _buffer[i];
 
     // Recognise the end, or after we've passed the term that we care about
-    if (ic == NMEA_PARITY_CHAR || ic == NMEA_END_CHAR || termIndex > targetTermIndex) {
+    if (ic == NMEA_PARITY_CHAR || ic == NMEA_LF || ic == NMEA_NL || termIndex > targetTermIndex) {
       break;
     }
 

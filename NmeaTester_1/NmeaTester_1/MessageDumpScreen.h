@@ -3,6 +3,7 @@
 #include "NmeaParser.h"
 #include <LiquidCrystal_I2C.h>
 
+const char DUMP_EMPTY_CHAR = ' ';
 
 class MessageDumpScreen: public BaseScreen {
   public:
@@ -17,4 +18,5 @@ class MessageDumpScreen: public BaseScreen {
     LiquidCrystal_I2C * _lcdPtr;
     char _msg[NMEA_MSG_MAX_LENGTH];
     bool _hasUpdate;
+    bool _mustDoFirstPrint;
 };

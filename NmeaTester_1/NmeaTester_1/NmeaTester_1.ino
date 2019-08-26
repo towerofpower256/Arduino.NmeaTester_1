@@ -18,6 +18,9 @@
 #define BUTTON_PIN 4 // PIN that the button will be connected to
 #define BUTTON_HOLD_DURATION_RESET 2000 // How long in MS to hold the button before it resets everything
 #define BUTTON_READ_DELAY 50
+#define BUTTONTRANSITION_NONE 0
+#define BUTTONTRANSITION_PRESSED 1
+#define BUTTONTRANSITION_RELEASED 2
 
 #include <math.h>
 #include <Wire.h> 
@@ -37,9 +40,12 @@ const char STARTUP_MSG_2[] = "-David McDonald-";
 
 // Working variables
 
+bool readyToReceive = false;
+
 bool buttonPressed = false;
 long buttonPressedAt = 0;
 long buttonLastRead = 0;
+byte buttonTransition = BUTTONTRANSITION_NONE;
 
 bool serialReadLedOn = false;
 long serialReadLedTimeout = 0;
@@ -68,7 +74,7 @@ void setup() {
   // Start serial at NMEA baud rate
   Serial.begin(4800);
   Serial.flush();
-  #if DEBUG
+  #ifdef DEBUG
   Serial.println(STARTUP_MSG_1);
   Serial.println(STARTUP_MSG_2);
   Serial.println(F("Debug enabled"));
@@ -89,7 +95,11 @@ void setup() {
   AddScreen(&messageDumpScreen);
   AddScreen(&compassScreen);
 
+  #ifdef DEBUG
   Serial.println(F("Startup complete"));
+  #endif
+
+  readyToReceive = true;
 }
 
 void loop() {
@@ -100,11 +110,11 @@ void loop() {
 
   // Update the screen
   if (!startupSplashDone && millis() > startupSplashTimeout) {
-    #if DEBUG
+    #ifdef DEBUG
     Serial.println(F("Ending startup splash"));
     #endif
     startupSplashDone = true;
-    ChangeScreen(1); // Change to the first screen
+    ChangeScreen(0); // Change to the first screen
   }
 
   if (startupSplashDone && screenChangeSplashDone) {
@@ -113,21 +123,29 @@ void loop() {
 }
 
 void serialEvent() {
-  while (Serial.available()) {
+  while (readyToReceive && Serial.available()) {
     TurnSerialReadLedOn();
-    char inChar = (char)Serial.read();
+    byte inByte = Serial.read();
+    char inChar = (char)inByte;
+    #ifdef DEBUG
+    Serial.print(F("CH: ")); Serial.print(inChar); Serial.print(' '); Serial.println(inByte);
+    #endif
 
     if (nmeaParser.doNext(inChar)) {
-      #if DEBUG
+      #ifdef DEBUG
       Serial.println(F("New NMEA msg: ")); Serial.println(nmeaParser.getSentence());
       #endif
 
+      /*
       for (int i=0; i < screenCount; i++) {
-        #if DEBUG
-        //Serial.print(F("Screen process message: ")); Serial.println(i);
+        #ifdef DEBUG
+        Serial.print(F("Screen process message: ")); Serial.println(i);
         #endif
         screens[i]->ProcessMessage(&nmeaParser);
       }
+      */
+      // Change - lets just process for the current screen
+      screens[currentScreen]->ProcessMessage(&nmeaParser);
     }
   }
 }
@@ -139,25 +157,26 @@ void AddScreen(BaseScreen* newScreenPtr) {
 }
 
 void ChangeScreen(byte screenID) {
-  #if DEBUG
+  #ifdef DEBUG
   Serial.print(F("ScreenChange: ")); Serial.println(screenID);
   #endif
   
   currentScreen = screenID;
   lcd.clear();
   screens[screenID]->TitlePrint();
+  screens[screenID]->Reset();
   screenChangeSplashTimeout = millis() + SCREEN_CHANGE_SPLASH_TIMEOUT;
   screenChangeSplashDone = false;
 }
 
 void CheckScreenChangeSplashTimeout() {
   if (!screenChangeSplashDone && millis() >= screenChangeSplashTimeout) {
-    #if DEBUG
+    #ifdef DEBUG
     Serial.println(F("Ending screen change splash"));
     #endif
 
     screenChangeSplashDone = true;
-    screens[currentScreen]->InitialPrint(); // Do the intial print for the current screen
+    //screens[currentScreen]->InitialPrint(); // Do the intial print for the current screen
     screens[currentScreen]->UpdatePrint(true); // Do the update print, and force it
   }
 }
@@ -165,7 +184,7 @@ void CheckScreenChangeSplashTimeout() {
 // Serial read LED indicator functionality
 void CheckSerialReadLed() {
   if (serialReadLedOn && (millis() >= serialReadLedTimeout)) {
-    #if DEBUG
+    #ifdef DEBUG
     Serial.println(F("SerialLedOff"));
     #endif
     // Timeout has passed, turn off the indicator
@@ -177,7 +196,7 @@ void CheckSerialReadLed() {
 void TurnSerialReadLedOn() {
   if (serialReadLedOn) return; // Don't do anything if the LED is already on
   
-  #if DEBUG
+  #ifdef DEBUG
   Serial.println(F("SerialLedOn"));
   #endif
   
@@ -188,6 +207,8 @@ void TurnSerialReadLedOn() {
 
 // Check buttons, and take action
 void CheckButtons() {
+  buttonTransition = BUTTONTRANSITION_NONE;
+  
   if (millis() < buttonLastRead + BUTTON_READ_DELAY) return; // Don't read just yet
 
   pinMode(BUTTON_PIN, INPUT_PULLUP); // It's overkill, but it fixes an issue I was having where the pin would get stuck HIGH
@@ -204,6 +225,7 @@ void CheckButtons() {
   if (buttonPressed && btnReading == HIGH) {
     buttonPressed = false;
     buttonWasReleased = true;
+    buttonTransition = BUTTONTRANSITION_RELEASED;
 
     #ifdef DEBUG
     Serial.println(F("Btn released"));
@@ -213,6 +235,7 @@ void CheckButtons() {
     buttonPressed = true;
     buttonWasPressed = true;
     buttonPressedAt = millis();
+    buttonTransition = BUTTONTRANSITION_PRESSED;
 
     #ifdef DEBUG
     Serial.println(F("Btn pressed"));
@@ -231,7 +254,7 @@ void CheckButtons() {
       // Reset all screens
       for (byte i=0; i < screenCount; i++) {
         screens[i]->Reset();
-        if (i == currentScreen) screens[i]->InitialPrint();
+        //if (i == currentScreen) screens[i]->InitialPrint();
       }
     }
     else

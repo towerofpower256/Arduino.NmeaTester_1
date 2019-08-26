@@ -1,4 +1,4 @@
-#define DEBUG true
+//#define DEBUG
 
 #include "Constants.h"
 #include "CompassScreen.h"
@@ -24,39 +24,39 @@ void CompassScreen::TitlePrint() {
 }
 
 void CompassScreen::UpdatePrint(bool forcePrint) {
+  if (_mustDoFirstPrint) InitialPrint();
   if (!forcePrint && !_hasUpdate) return;
   
   LiquidCrystal_I2C lcd = *_lcdPtr;
-  char buffer[5]; memcpy(buffer, 0, sizeof buffer); // Init the buffer
+  char buffer[COMPASS_MSG_BUFFER_SIZE]; memcpy(buffer, 0, sizeof buffer); // Init the buffer
   
   // Print magnetic bearing
   lcd.setCursor(2,0);
   if (!_hasBearingM) {
     lcd.print(COMPASS_EMPTY_NUMBER_CHAR);
   }
-  else {
-    // TODO print the magnetic bearing
-    dtostrf(_bearingM, 5, 1, buffer);
+  else
+  {
+    dtostrf(_bearingM, COMPASS_MSG_BUFFER_SIZE, 1, buffer);
     lcd.print(buffer);
   }
+  
 
   // Print true bearing
   lcd.setCursor(2,1);
   if (!_hasBearingT) {
     lcd.print(COMPASS_EMPTY_NUMBER_CHAR);
   }
-  else {
-    dtostrf(_bearingT, 5, 1, buffer);
+  else
+  {
+    dtostrf(_bearingT, COMPASS_MSG_BUFFER_SIZE, 1, buffer);
     lcd.print(buffer);
   }
 
   // Print the difference / deviation
   lcd.setCursor(10,0);
   if (_hasBearingM && _hasBearingT && (_bearingM != _bearingT)) {
-    // TODO calculate and print the difference
-    //dtostrf(abs(diff), 5, 1, buffer);
-    //memcpy(buffer, 0, sizeof buffer); // Clear the buffer. Do I need to do this?
-    dtostrf(abs(_diff), 5, 1, buffer); // Value, string width, decimal places, output buffer
+    dtostrf(abs(_diff), COMPASS_MSG_BUFFER_SIZE, 1, buffer); // Value, string width, decimal places, output buffer
     lcd.print(buffer);
 
     // Print the trailing East / West char
@@ -66,6 +66,11 @@ void CompassScreen::UpdatePrint(bool forcePrint) {
   }
   else {
     lcd.print(COMPASS_EMPTY_NUMBER_CHAR);
+    lcd.print(COMPASS_SPACE_CHAR);
+    lcd.print(COMPASS_SPACE_CHAR);
+    lcd.print(COMPASS_SPACE_CHAR);
+    lcd.print(COMPASS_SPACE_CHAR);
+    lcd.print(COMPASS_SPACE_CHAR);
   }
 
   _hasUpdate = false;
@@ -79,6 +84,7 @@ void CompassScreen::Reset() {
   _bearingM = 0;
   _bearingT = 0;
   _diff = 0;
+  _mustDoFirstPrint = true;
 }
 
 void CompassScreen::InitialPrint() {
@@ -96,10 +102,12 @@ void CompassScreen::InitialPrint() {
   lcd.setCursor(8,0);
   lcd.print(COMPASS_BEARING_DIFF_LABEL);
   lcd.print(COLON_CHAR);
+
+  _mustDoFirstPrint = false;
 }
 
 void CompassScreen::ProcessMessage(NmeaParser* parser) {
-  #if DEBUG
+  #ifdef DEBUG
   Serial.println(F("CompassScreen ProcessMessage"));
   Serial.print(F("Val: ")); Serial.println(parser->getTerm(1).toFloat());
   #endif
@@ -109,7 +117,7 @@ void CompassScreen::ProcessMessage(NmeaParser* parser) {
   // $GPHDT,123.456,T*00
   // https://www.trimble.com/OEM_ReceiverHelp/V4.44/en/NMEA-0183messages_HDT.html
   if (messageDesc == "HDT") {
-    #if DEBUG
+    #ifdef DEBUG
     Serial.println(F("Processing HDT"));
     #endif
     
@@ -128,7 +136,7 @@ void CompassScreen::ProcessMessage(NmeaParser* parser) {
   // $GPHDM,123.456,M*00
   // https://gpsd.gitlab.io/gpsd/NMEA.html#_hdm_heading_magnetic
   if (messageDesc == "HDM") {
-    #if DEBUG
+    #ifdef DEBUG
     Serial.println(F("Processing HDM"));
     #endif
     float newValue = parser->getTerm(1).toFloat();
@@ -152,12 +160,8 @@ void CompassScreen::_CalculateDiff() {
   {
     // Calculate the difference between Magnetic and True
     
-    // TODO math is fucky.
-    // If you set it both to 0.1, it says deviation is -90.
-    // If you set it to 0.1 and 0.2, it shows a negative deviation (ABS should never let that happen).
-    
     _diff = Utils::ConstrainAngle(_bearingM - _bearingT);
-    #if DEBUG
+    #ifdef DEBUG
     Serial.print(F("DiffCalc: ")); Serial.println(_diff);
     #endif
   }

@@ -5,6 +5,8 @@
 #include "NmeaParser.h"
 #include <LiquidCrystal_I2C.h>
 
+#define COMPASS_MSG_BUFFER_SIZE 5
+
 const char COMPASS_DIFF_POSITIVE_CHAR = 'W';
 const char COMPASS_DIFF_NEGATIVE_CHAR = 'E';
 const char COMPASS_BEARING_MAGNETIC_LABEL = 'M';
@@ -31,7 +33,7 @@ class CompassScreen: public BaseScreen {
     bool _hasBearingT;
     float _diff;
     bool _hasDiff;
-    
+    bool _mustDoFirstPrint;
 
     void _CalculateDiff();
 };
